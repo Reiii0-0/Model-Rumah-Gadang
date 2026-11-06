@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f3efe6" />
+  <meta name="description" content="Rekonstruksi 3D interaktif Rumah Gadang PDIKM Padang Panjang dengan penjelasan arsitektur dwibahasa Indonesia dan Baso Minang." />
+  <title>Rumah Gadang PDIKM · Kajian Arsitektur 3D Minangkabau</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+  <div class="marawa-ribbon" aria-hidden="true">
+    <span class="marawa-siriah"></span>
+    <span class="marawa-kesumba"></span>
+    <span class="marawa-kunyik"></span>
+  </div>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Rumah Gadang PDIKM beranda">
+      <svg class="brand-mark" viewBox="0 0 52 36" aria-hidden="true">
+        <path d="M3 4Q9 22 26 17Q43 22 49 4L46 27H6Z" />
+        <path d="M18 11Q26 21 34 11L32 27H20Z" />
+        <path d="M12 27v6m14-6v6m14-6v6" />
+      </svg>
+      <span class="brand-text">
+        <strong>RUMAH GADANG PDIKM</strong>
+        <small id="brand-sub">PUSAT DOKUMENTASI MINANGKABAU</small>
+      </span>
+    </a>
+    <nav class="topnav" aria-label="Utilitas dan bahasa">
+      <button id="lang-toggle" class="lang-toggle" type="button" aria-pressed="false" title="Alihkan Bahasa Indonesia / Baso Minang (L)">
+        <span class="lang-code active" id="lang-pill-id">ID</span>
+        <span class="lang-divider" aria-hidden="true">/</span>
+        <span class="lang-code" id="lang-pill-min">MIN</span>
+        <span id="lang-label" class="lang-caption">Baso Minang</span>
+      </button>
+      <button id="references-button" class="nav-btn" type="button">
+        <span id="references-label">Sumber Foto</span>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11L11 5M6 5h5v5" /></svg>
+      </button>
+      <button id="help-button" class="nav-btn help-button" type="button">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" /><path d="M6.5 6.3a1.6 1.6 0 1 1 2.3 1.5c-.6.3-.8.7-.8 1.3m0 2.1v.3" /></svg>
+        <span id="help-label">Panduan</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="workspace">
+    <aside class="sidebar">
+      <div class="ukiran-border" aria-hidden="true"></div>
+      <div class="intro">
+        <p id="intro-kicker" class="arch-lineage">ARSITEKTUR BAANJUANG · KOTO PILIANG</p>
+        <h1>Rumah Gadang <span>PDIKM</span></h1>
+        <p id="location-label" class="location">Padang Panjang · Sumatera Barat</p>
+        <p id="intro-copy" class="intro-copy">Amati konstruksi atap gonjong, ragam ukiran kayu, serta tata ruang dalam Pusat Dokumentasi dan Informasi Kebudayaan Minangkabau.</p>
+      </div>
+
+      <section class="parts-section" aria-labelledby="parts-heading">
+        <div class="parts-header">
+          <h2 id="parts-heading">Komponen Arsitektur</h2>
+          <span id="parts-count" class="parts-badge">8 Elemen</span>
+        </div>
+        <div id="parts-list" class="parts-list"></div>
+      </section>
+
+      <section class="detail-card" aria-live="polite">
+        <span id="detail-index" class="detail-category">KAJIAN STRUKTUR &amp; RUANG</span>
+        <h2 id="detail-title">Pilih komponen pada model atau daftar di atas.</h2>
+        <p id="detail-description">Setiap bagian menampilkan fungsi konstruksi, tata ruang adat, serta batas antara rujukan foto asli dan rekonstruksi prosedural.</p>
+        <p id="detail-evidence" class="evidence-note">Rekonstruksi mengacu pada enam foto dokumentasi terbuka PDIKM Padang Panjang.</p>
+        <button id="clear-selection" class="clear-btn" type="button" hidden>
+          <span id="clear-label">Lepas sorotan komponen</span>
+          <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 3.5l7 7m0-7l-7 7" /></svg>
+        </button>
+      </section>
+
+      <footer class="sidebar-footer">
+        <div class="proverb-box">
+          <strong id="proverb-title">“Alam Takambang Jadi Guru”</strong>
+          <span id="proverb-sub">Falsafah rancang bangun Minangkabau</span>
+        </div>
+        <p class="colophon-meta">GRAFIKA KOMPUTER <span>PDIKM · 3D</span></p>
+      </footer>
+    </aside>
+
+    <section class="stage" aria-label="Penampil model 3D">
+      <div class="stage-heading">
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          <span id="scene-status">MENYUSUN GEOMETRI</span>
+        </div>
+        <span id="view-label" class="view-badge">Perspektif ¾</span>
+      </div>
+
+      <div id="viewport">
+        <div id="loading">Menyusun Rumah Gadang…</div>
+        <noscript>
+          <p class="webgl-fallback">Model interaktif ini memerlukan JavaScript dan WebGL. Anda tetap dapat meninjau sumber foto serta keterangan arsitektur Rumah Gadang PDIKM pada halaman ini setelah mengaktifkan JavaScript.</p>
+        </noscript>
+      </div>
+
+      <div class="view-switch" role="group" aria-label="Sudut pandang">
+        <button data-view="perspective" class="active" aria-pressed="true" type="button">¾</button>
+        <button data-view="front" aria-pressed="false" type="button">Depan</button>
+        <button data-view="side" aria-pressed="false" type="button">Samping</button>
+        <button data-view="back" aria-pressed="false" type="button">Belakang</button>
+        <button data-view="interior" aria-pressed="false" type="button">Dalam</button>
+      </div>
+
+      <div class="scene-caption">
+        <span id="caption-left">REKONSTRUKSI PROSEDURAL THREE.JS</span>
+        <span id="assumption-label">Fasad dan proporsi mengacu pada foto dokumentasi PDIKM</span>
+      </div>
+
+      <div class="toolbar">
+        <div class="tool-group">
+          <button id="day-night" aria-pressed="false" type="button">
+            <span class="tool-icon" aria-hidden="true">
+              <svg class="icon-sun" viewBox="0 0 18 18"><circle cx="9" cy="9" r="3.4" /><path d="M9 2v2.1M9 13.9V16M2 9h2.1M13.9 9H16M4.1 4.1l1.5 1.5M12.4 12.4l1.5 1.5M13.9 4.1l-1.5 1.5M5.6 12.4l-1.5 1.5" /></svg>
+              <svg class="icon-moon" viewBox="0 0 18 18"><path d="M14.2 11.4A5.8 5.8 0 0 1 6.6 3.8a5.8 5.8 0 1 0 7.6 7.6Z" /></svg>
+            </span>
+            <span id="light-label">Siang</span>
+          </button>
+          <button id="door-button" aria-pressed="false" type="button">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18"><rect x="3.2" y="2.5" width="11.6" height="13" rx="1" /><path d="M9 2.5v13M7.2 9h.5m2.6 0h.5" /></svg>
+            </span>
+            <span id="door-label">Buka pintu</span>
+          </button>
+          <button id="cutaway-button" aria-pressed="false" type="button">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18"><path d="M2 8.5Q5.5 13 9 10.5Q12.5 13 16 8.5L14.5 3.5Q9 9.5 3.5 3.5Z" /><path d="M4.2 11.5v4h9.6v-4" /></svg>
+            </span>
+            <span id="cutaway-label">Buka atap</span>
+          </button>
+          <button id="tour-button" aria-pressed="false" type="button">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18"><path d="M14.8 9A5.8 5.8 0 1 1 13 4.8" /><path d="M13.2 2.4v2.8h-2.8" /></svg>
+            </span>
+            <span id="tour-label">Tur kamera</span>
+          </button>
+        </div>
+        <div class="tool-group">
+          <button id="zoom-in" aria-label="Perbesar" type="button">
+            <svg class="tool-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" /></svg>
+          </button>
+          <button id="zoom-out" aria-label="Perkecil" type="button">
+            <svg class="tool-icon-sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9" /></svg>
+          </button>
+          <button id="reset-camera" title="Reset kamera (R)" type="button">
+            <span class="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18"><path d="M3.5 9a5.5 5.5 0 1 0 1.6-3.9L3.2 7" /><path d="M3.2 3.6V7h3.4" /></svg>
+            </span>
+            <span id="reset-label">Reset</span>
+          </button>
+        </div>
+        <label class="exposure-control" for="exposure">
+          <span id="exposure-label">Eksposur</span>
+          <input id="exposure" type="range" min="0.5" max="1.8" step="0.05" value="1.1" />
+          <output id="exposure-value">1.10</output>
+        </label>
+      </div>
+
+      <p id="gesture-hint" class="gesture-hint">Geser untuk memutar kamera · Gulir untuk zoom · Klik bagian rumah untuk membaca detail · Tekan L untuk Baso Minang</p>
+    </section>
+  </main>
+
+  <dialog id="help-dialog">
+    <button class="dialog-close" aria-label="Tutup panduan" type="button">×</button>
+    <p id="help-category" class="dialog-category">NAVIGASI &amp; KONTROL INTERAKTIF</p>
+    <h2 id="help-title">Panduan Pengamatan Model 3D</h2>
+    <dl id="help-list">
+      <dt>Putar Kamera 360°</dt>
+      <dd>Geser dengan tombol kiri mouse atau satu jari pada layar sentuh.</dd>
+      <dt>Perbesar &amp; Perkecil</dt>
+      <dd>Gunakan roda gulir mouse, cubit dua jari, atau tombol + dan −.</dd>
+      <dt>Geser Sumbu Pandang</dt>
+      <dd>Geser dengan tombol kanan mouse atau dua jari secara bersamaan.</dd>
+      <dt>Eksplorasi Komponen &amp; Interior</dt>
+      <dd>Klik langsung bagian bangunan pada kanvas 3D atau pilih dari daftar kiri. Gunakan tombol Dalam atau Buka atap untuk meninjau ruang pamer PDIKM.</dd>
+      <dt>Pintasan Papan Ketik</dt>
+      <dd>R: reset kamera · D: buka/tutup pintu · C: buka/tutup atap · I: kamera ruang dalam · N: siang/malam · T: tur otomatis · L: ganti bahasa ID/MIN · Esc: tutup dialog.</dd>
+    </dl>
+    <p id="help-footer" class="dialog-note">Interaksi kamera manual akan menghentikan tur otomatis. Penggeser Eksposur mengatur kecerahan tone mapping ACES Filmic.</p>
+  </dialog>
+
+  <dialog id="references-dialog">
+    <button class="dialog-close" aria-label="Tutup referensi" type="button">×</button>
+    <p id="ref-category" class="dialog-category">DOKUMENTASI OBJEK TUNGGAL · SUMBER TERBUKA</p>
+    <h2 id="ref-title">Rujukan Visual Rumah Gadang PDIKM</h2>
+    <p id="ref-intro">Seluruh geometri mengacu pada satu bangunan fisik yang sama: Rumah Gadang Pusat Dokumentasi dan Informasi Kebudayaan Minangkabau (PDIKM) di Kelurahan Silaing Bawah, Padang Panjang.</p>
+    <div id="reference-gallery"></div>
+    <p id="ref-disclosure" class="reference-disclosure">Siluet atap gonjong, fasad depan, ukiran serambi, dan ruang pamer dalam mengacu langsung pada keenam foto di atas. Ukuran metrik presisi, fasad belakang, serta mekanisme ayun engsel pintu merupakan pendekatan prosedural.</p>
+    <a id="ref-link" href="./references/sources.md" target="_blank" rel="noopener">Lihat dokumen atribusi dan lisensi lengkap (sources.md) ↗</a>
+  </dialog>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
