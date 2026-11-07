@@ -1,0 +1,141 @@
+{
+  "testedAt": "2026-11-10T05:27:39.368Z",
+  "browser": "153.0.8010.12",
+  "renderer": "Chromium headless / SwiftShader; touch emulated through CDP",
+  "results": [
+    {
+      "name": "WebGL context, eight semantic parts, antialias and shadow map",
+      "status": "pass"
+    },
+    {
+      "name": "All eight part buttons select, highlight and describe their component",
+      "status": "pass"
+    },
+    {
+      "name": "Bilingual translation toggle switches between Bahasa Indonesia (ID) and Baso Minang (MIN)",
+      "status": "pass"
+    },
+    {
+      "name": "Raycaster selection with a real mouse click on the stairs",
+      "status": "pass"
+    },
+    {
+      "name": "Interior camera preset and cutaway roof toggle work via UI and keyboard",
+      "status": "pass"
+    },
+    {
+      "name": "Mouse drag orbits; right drag pans; wheel zooms",
+      "status": "pass"
+    },
+    {
+      "name": "UI zoom and reset",
+      "status": "pass"
+    },
+    {
+      "name": "Door opens and closes around its hinge, including keyboard D",
+      "status": "pass"
+    },
+    {
+      "name": "Night mode changes ambient, sun color/intensity and scene",
+      "status": "pass"
+    },
+    {
+      "name": "Exposure slider changes the renderer, keyboard accessible",
+      "status": "pass"
+    },
+    {
+      "name": "Camera tour moves, stops from UI, and stops on manual camera input",
+      "status": "pass"
+    },
+    {
+      "name": "Help dialog and six licensed reference photos work in the production build",
+      "status": "pass"
+    },
+    {
+      "name": "Five camera presets, cutaway view, and full model screenshots",
+      "status": "pass"
+    },
+    {
+      "name": "Responsive laptop 1366×768",
+      "status": "pass"
+    },
+    {
+      "name": "Responsive tablet 768×1024",
+      "status": "pass"
+    },
+    {
+      "name": "Phone 390×844: responsive layout, tap selection and touch UI",
+      "status": "pass"
+    },
+    {
+      "name": "One-finger touch orbit",
+      "status": "pass"
+    },
+    {
+      "name": "Two-finger pinch zoom and two-finger pan",
+      "status": "pass"
+    },
+    {
+      "name": "Small phone 360×740 and landscape 844×390",
+      "status": "pass"
+    },
+    {
+      "name": "No browser errors or failed resource requests",
+      "status": "pass"
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "stats": {
+    "ready": true,
+    "phase": "interaction",
+    "lang": "id",
+    "selected": null,
+    "night": false,
+    "nightMix": 0,
+    "doorOpen": false,
+    "doorAngle": 0,
+    "cutaway": false,
+    "roofVisible": true,
+    "ceilingVisible": true,
+    "touring": false,
+    "view": "perspective",
+    "camera": [
+      18.998323676700757,
+      11.919362997146292,
+      35.146898801896405
+    ],
+    "target": [
+      0,
+      4.7,
+      0
+    ],
+    "exposure": 1.1,
+    "hemi": 2.1,
+    "sun": 3.2,
+    "sunColor": "fff0d0",
+    "shadowEnabled": true,
+    "shadowMap": [
+      2048,
+      2048
+    ],
+    "drawCalls": 92,
+    "triangles": 124978,
+    "frameCount": 130,
+    "canvas": [
+      554,
+      184
+    ],
+    "parts": [
+      "roof",
+      "body",
+      "pillars",
+      "stairs",
+      "doors",
+      "windows",
+      "ornaments",
+      "interior"
+    ],
+    "antialias": true
+  }
+}
