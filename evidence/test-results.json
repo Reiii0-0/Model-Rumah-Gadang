@@ -1,5 +1,5 @@
 {
-  "testedAt": "2026-11-10T05:27:39.368Z",
+  "testedAt": "2026-11-10T05:59:54.150Z",
   "browser": "153.0.8010.12",
   "renderer": "Chromium headless / SwiftShader; touch emulated through CDP",
   "results": [
@@ -121,7 +121,7 @@
     ],
     "drawCalls": 92,
     "triangles": 124978,
-    "frameCount": 130,
+    "frameCount": 117,
     "canvas": [
       554,
       184

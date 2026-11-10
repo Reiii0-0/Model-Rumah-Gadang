@@ -23,6 +23,22 @@ const snapshot = () => page.evaluate(() => window.__app.snapshot());
 const distance = (s) => Math.hypot(...s.camera.map((v, i) => v - s.target[i]));
 const delta = (a, b) => Math.hypot(...a.map((v, i) => v - b[i]));
 
+async function waitForCondition(fn, arg = undefined, timeout = 20000) {
+  await page.waitForFunction(fn, arg, { timeout });
+}
+
+async function capturePng(filePath, fullPage = false) {
+  await page.evaluate(() => {
+    window.__app.setPaused(true);
+    window.__app.renderNow();
+  });
+  try {
+    await page.screenshot({ path: filePath, fullPage, animations: 'disabled', timeout: 60000 });
+  } finally {
+    await page.evaluate(() => window.__app.setPaused(false));
+  }
+}
+
 async function check(name, fn) {
   try {
     await fn();
@@ -53,9 +69,9 @@ function monitor(p) {
 
 async function ready(p) {
   try {
-    await p.waitForFunction(() => window.__app?.snapshot().frameCount > 5, {}, { timeout: 15000 });
+    await p.waitForFunction(() => window.__app?.snapshot().frameCount > 5, {}, { timeout: 25000 });
   } catch (e) {
-    await p.screenshot({ path: 'evidence/final/startup-error.png' });
+    await p.screenshot({ path: 'evidence/final/startup-error.png', timeout: 60000 }).catch(() => {});
     console.error(errors);
     throw e;
   }
@@ -76,7 +92,7 @@ try {
     assert.ok(s.triangles > 1000);
   });
 
-  await page.screenshot({ path: 'evidence/final/desktop.png' });
+  await capturePng('evidence/final/desktop.png');
 
   await check('All eight part buttons select, highlight and describe their component', async () => {
     for (const id of ['roof', 'body', 'pillars', 'stairs', 'doors', 'windows', 'ornaments', 'interior']) {
@@ -96,7 +112,7 @@ try {
     await page.locator('[data-part="stairs"]').click();
     assert.equal(await page.locator('#detail-title').textContent(), 'Janjang Naiak');
     assert.ok((await page.locator('#detail-description').textContent()).includes('Janjang batu'));
-    await page.screenshot({ path: 'evidence/final/minang-ui.png' });
+    await capturePng('evidence/final/minang-ui.png');
     await page.keyboard.press('l');
     assert.equal((await snapshot()).lang, 'id');
     assert.equal(await page.locator('#detail-title').textContent(), 'Tangga Masuk');
@@ -141,7 +157,10 @@ try {
     await page.mouse.down();
     await page.mouse.move(x + 140, y + 30, { steps: 12 });
     await page.mouse.up();
-    await page.waitForTimeout(500);
+    await waitForCondition(
+      (prev) => Math.hypot(...window.__app.snapshot().camera.map((v, i) => v - prev[i])) > 2,
+      before.camera
+    );
     let after = await snapshot();
     assert.ok(delta(before.camera, after.camera) > 2);
 
@@ -150,13 +169,20 @@ try {
     await page.mouse.down({ button: 'right' });
     await page.mouse.move(x + 65, y + 35, { steps: 8 });
     await page.mouse.up({ button: 'right' });
-    await page.waitForTimeout(500);
+    await waitForCondition(
+      (prev) => Math.hypot(...window.__app.snapshot().target.map((v, i) => v - prev[i])) > 0.1,
+      before.target
+    );
     after = await snapshot();
     assert.ok(delta(before.target, after.target) > 0.1);
 
     before = after;
+    const prevDist = distance(before);
     await page.mouse.wheel(0, -240);
-    await page.waitForTimeout(500);
+    await waitForCondition((d) => {
+      const s = window.__app.snapshot();
+      return Math.hypot(...s.camera.map((v, i) => v - s.target[i])) < d;
+    }, prevDist);
     after = await snapshot();
     assert.ok(distance(after) < distance(before));
   });
@@ -174,13 +200,13 @@ try {
   await check('Door opens and closes around its hinge, including keyboard D', async () => {
     await page.locator('[data-view="front"]').click();
     await page.locator('#door-button').click();
-    await page.waitForTimeout(1400);
+    await waitForCondition(() => window.__app.snapshot().doorAngle > 1.4);
     let s = await snapshot();
     assert.equal(s.doorOpen, true);
     assert.ok(s.doorAngle > 1.4);
-    await page.screenshot({ path: 'evidence/final/door-open.png' });
+    await capturePng('evidence/final/door-open.png');
     await page.keyboard.press('d');
-    await page.waitForTimeout(1400);
+    await waitForCondition(() => window.__app.snapshot().doorAngle < 0.03);
     s = await snapshot();
     assert.equal(s.doorOpen, false);
     assert.ok(s.doorAngle < 0.03);
@@ -189,14 +215,14 @@ try {
   await check('Night mode changes ambient, sun color/intensity and scene', async () => {
     const before = await snapshot();
     await page.locator('#day-night').click();
-    await page.waitForTimeout(1800);
+    await waitForCondition(() => window.__app.snapshot().nightMix > 0.95);
     const s = await snapshot();
     assert.equal(s.night, true);
     assert.ok(s.nightMix > 0.95);
     assert.ok(s.hemi < before.hemi);
     assert.ok(s.sun < before.sun);
     assert.notEqual(s.sunColor, before.sunColor);
-    await page.screenshot({ path: 'evidence/final/night.png' });
+    await capturePng('evidence/final/night.png');
   });
 
   await check('Exposure slider changes the renderer, keyboard accessible', async () => {
@@ -207,14 +233,17 @@ try {
     await page.keyboard.press('Home');
     for (let i = 0; i < 12; i++) await page.keyboard.press('ArrowRight');
     await page.locator('#day-night').click();
-    await page.waitForTimeout(1700);
+    await waitForCondition(() => window.__app.snapshot().nightMix < 0.05);
   });
 
   await check('Camera tour moves, stops from UI, and stops on manual camera input', async () => {
     await page.locator('#reset-camera').click();
     const before = await snapshot();
     await page.locator('#tour-button').click();
-    await page.waitForTimeout(1500);
+    await waitForCondition(
+      (prev) => Math.hypot(...window.__app.snapshot().camera.map((v, i) => v - prev[i])) > 0.2,
+      before.camera
+    );
     assert.equal((await snapshot()).touring, true);
     assert.ok(delta(before.camera, (await snapshot()).camera) > 0.2);
     await page.locator('#tour-button').click();
@@ -245,24 +274,27 @@ try {
 
   await check('Five camera presets, cutaway view, and full model screenshots', async () => {
     await page.evaluate(() => document.body.classList.add('capture'));
-    await page.waitForTimeout(250);
-    for (const view of ['front', 'side', 'back', 'perspective', 'interior']) {
-      await page.evaluate((v) => window.__app.screenshotView(v), view);
-      await page.waitForTimeout(450);
-      await page.screenshot({ path: `evidence/final/${view}.png` });
+    try {
+      await waitForCondition(
+        (prev) => window.__app.snapshot().frameCount >= prev + 2,
+        (await snapshot()).frameCount
+      );
+      for (const view of ['front', 'side', 'back', 'perspective', 'interior']) {
+        await page.evaluate((v) => window.__app.screenshotView(v), view);
+        await capturePng(`evidence/final/${view}.png`);
+      }
+      await page.evaluate(() => {
+        window.__app.screenshotView('perspective');
+        window.__app.setCutaway(true);
+      });
+      await capturePng('evidence/final/cutaway.png');
+    } finally {
+      await page.evaluate(() => {
+        window.__app.setCutaway(false);
+        window.__app.screenshotView('perspective');
+        document.body.classList.remove('capture');
+      });
     }
-    await page.evaluate(() => {
-      window.__app.screenshotView('perspective');
-      window.__app.setCutaway(true);
-    });
-    await page.waitForTimeout(450);
-    await page.screenshot({ path: 'evidence/final/cutaway.png' });
-    await page.evaluate(() => {
-      window.__app.setCutaway(false);
-      window.__app.screenshotView('perspective');
-      document.body.classList.remove('capture');
-    });
-    await page.waitForTimeout(250);
   });
 
   for (const [width, height, label] of [
@@ -272,11 +304,14 @@ try {
     await check(`Responsive ${label} ${width}×${height}`, async () => {
       await page.setViewportSize({ width, height });
       await page.locator('#reset-camera').click();
-      await page.waitForTimeout(300);
+      await waitForCondition(
+        (prev) => window.__app.snapshot().frameCount >= prev + 2,
+        (await snapshot()).frameCount
+      );
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       const b = await page.locator('#door-button').boundingBox();
       assert.ok(b.y + b.height <= height);
-      await page.screenshot({ path: `evidence/final/${label}.png` });
+      await capturePng(`evidence/final/${label}.png`);
     });
   }
 
@@ -302,10 +337,11 @@ try {
     assert.equal((await snapshot()).selected, 'roof');
     await page.locator('#clear-selection').tap();
     await page.locator('#door-button').tap();
-    await page.waitForTimeout(1400);
+    await waitForCondition(() => window.__app.snapshot().doorAngle > 1.4);
     assert.ok((await snapshot()).doorAngle > 1.4);
     await page.locator('#door-button').tap();
-    await page.screenshot({ path: 'evidence/final/mobile.png', fullPage: true });
+    await waitForCondition(() => window.__app.snapshot().doorAngle < 0.03);
+    await capturePng('evidence/final/mobile.png', true);
   });
 
   await check('One-finger touch orbit', async () => {
@@ -317,7 +353,10 @@ try {
     await touch('touchStart', [{ x, y, id: 1 }]);
     for (let i = 1; i <= 10; i++) await touch('touchMove', [{ x: x + i * 7, y: y + i, id: 1 }]);
     await touch('touchEnd', []);
-    await page.waitForTimeout(500);
+    await waitForCondition(
+      (prev) => Math.hypot(...window.__app.snapshot().camera.map((v, i) => v - prev[i])) > 1,
+      before.camera
+    );
     assert.ok(delta(before.camera, (await snapshot()).camera) > 1);
   });
 
@@ -338,7 +377,10 @@ try {
       ]);
     }
     await touch('touchEnd', []);
-    await page.waitForTimeout(400);
+    await waitForCondition((d) => {
+      const s = window.__app.snapshot();
+      return Math.hypot(...s.camera.map((v, i) => v - s.target[i])) < d;
+    }, distance(before));
     const zoomed = await snapshot();
     assert.ok(distance(zoomed) < distance(before));
 
@@ -353,7 +395,10 @@ try {
       ]);
     }
     await touch('touchEnd', []);
-    await page.waitForTimeout(400);
+    await waitForCondition(
+      (prev) => Math.hypot(...window.__app.snapshot().target.map((v, i) => v - prev[i])) > 0.1,
+      zoomed.target
+    );
     assert.ok(delta(zoomed.target, (await snapshot()).target) > 0.1);
   });
 
@@ -364,9 +409,12 @@ try {
     ]) {
       await page.setViewportSize({ width, height });
       await page.locator('#reset-camera').tap();
-      await page.waitForTimeout(300);
+      await waitForCondition(
+        (prev) => window.__app.snapshot().frameCount >= prev + 2,
+        (await snapshot()).frameCount
+      );
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-      await page.screenshot({ path: `evidence/final/mobile-${width}x${height}.png`, fullPage: true });
+      await capturePng(`evidence/final/mobile-${width}x${height}.png`, true);
     }
   });
 

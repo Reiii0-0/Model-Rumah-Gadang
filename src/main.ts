@@ -600,6 +600,7 @@ const nightSun = new THREE.Color('#9ebfff');
 
 let previousTime = performance.now();
 let frameCount = 0;
+let renderPaused = false;
 
 function frame(time: number) {
   const rawDt = Math.max(0, (time - previousTime) / 1000);
@@ -631,7 +632,7 @@ function frame(time: number) {
 
   controls.update(dt);
   renderer.render(scene, camera);
-  requestAnimationFrame(frame);
+  if (!renderPaused) requestAnimationFrame(frame);
 }
 
 el('loading').remove();
@@ -684,5 +685,17 @@ const diagnostics = {
   screenshotView: (view: View) => setView(view),
   setCutaway: (open: boolean) => setCutaway(open),
   setLanguage: (nextLang: Lang) => setLanguage(nextLang),
+  renderNow: () => {
+    controls.update(0);
+    renderer.render(scene, camera);
+  },
+  setPaused: (paused: boolean) => {
+    const wasPaused = renderPaused;
+    renderPaused = paused;
+    if (wasPaused && !paused) {
+      previousTime = performance.now();
+      requestAnimationFrame(frame);
+    }
+  },
 };
 Object.assign(window, { __app: diagnostics });

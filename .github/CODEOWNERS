@@ -1,0 +1,4 @@
+# Lindungi konfigurasi CI/CD dan Firebase agar perubahan workflow selalu melalui review pemilik repo
+/.github/ @Reiii0-0
+/firebase.json @Reiii0-0
+/.firebaserc @Reiii0-0

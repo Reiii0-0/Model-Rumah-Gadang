@@ -1,10 +1,15 @@
-name: CI
+name: CI & Auto-Deploy Firebase Hosting
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
 
 jobs:
   build-and-test:
@@ -35,3 +40,82 @@ jobs:
 
       - name: Run Playwright WebGL E2E suite
         run: npm run test:e2e
+
+  deploy-live:
+    name: Deploy Live to Firebase Hosting
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies & build
+        run: npm ci && npm run build
+
+      - name: Check Firebase service account secret
+        id: check-secret
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$FIREBASE_SA" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Tambahkan secret FIREBASE_SERVICE_ACCOUNT di Settings -> Secrets -> Actions agar push ke main otomatis ter-deploy ke https://rumah-gadang-pdikm.web.app"
+          fi
+
+      - name: Deploy to Firebase Hosting (live)
+        if: steps.check-secret.outputs.configured == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: rumah-gadang-pdikm
+          channelId: live
+
+  deploy-preview:
+    name: Deploy PR Preview to Firebase Hosting
+    needs: build-and-test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies & build
+        run: npm ci && npm run build
+
+      - name: Check Firebase service account secret
+        id: check-secret
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$FIREBASE_SA" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy Firebase Preview Channel
+        if: steps.check-secret.outputs.configured == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: rumah-gadang-pdikm
+          expires: 7d
