@@ -1,6 +1,6 @@
 {
-  "testedAt": "2026-11-10T05:59:54.150Z",
-  "browser": "153.0.8010.12",
+  "testedAt": "2026-11-21T08:10:28.617Z",
+  "browser": "158.0.4370.33",
   "renderer": "Chromium headless / SwiftShader; touch emulated through CDP",
   "results": [
     {
@@ -48,6 +48,18 @@
       "status": "pass"
     },
     {
+      "name": "Walk mode: J/button enters first person, WASD moves, closed door blocks, Esc restores orbit",
+      "status": "pass"
+    },
+    {
+      "name": "Walk mode: click opens the door, doorway veto, threshold, indoor light, part selection, debug",
+      "status": "pass"
+    },
+    {
+      "name": "Walk mode: entering from the interior preset starts inside, language switch stays available",
+      "status": "pass"
+    },
+    {
       "name": "Help dialog and six licensed reference photos work in the production build",
       "status": "pass"
     },
@@ -85,7 +97,12 @@
     }
   ],
   "errors": [],
-  "warnings": [],
+  "warnings": [
+    "[.WebGL-0x503c0062ca00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[.WebGL-0x503c0062ca00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[.WebGL-0x503c0062ca00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[.WebGL-0x503c0062ca00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+  ],
   "stats": {
     "ready": true,
     "phase": "interaction",
@@ -100,6 +117,7 @@
     "ceilingVisible": true,
     "touring": false,
     "view": "perspective",
+    "walking": false,
     "camera": [
       18.998323676700757,
       11.919362997146292,
@@ -121,7 +139,7 @@
     ],
     "drawCalls": 92,
     "triangles": 124978,
-    "frameCount": 117,
+    "frameCount": 123,
     "canvas": [
       554,
       184

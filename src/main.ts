@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { DoorState } from './doors';
 import { buildHouse } from './model/house';
 import type { ModelPhase } from './model/house';
 import { SITE } from './model/layout';
+import { WalkMode } from './walk/walkMode';
 import { partInfo, uiText } from './model/parts';
 import type { Lang, PartId } from './model/parts';
 import './style.css';
@@ -131,12 +133,35 @@ type View = 'perspective' | 'front' | 'side' | 'back' | 'interior';
 let lang: Lang = params.get('lang') === 'min' ? 'min' : 'id';
 let activeView: View = 'perspective';
 let selected: PartId | null = null;
-let doorOpen = false;
 let cutaway = false;
 let night = false;
 let nightMix = 0;
 let touring = false;
-let doorAngle = 0;
+const door = new DoorState();
+
+/** Keys meant for the app, not for a focused slider, an open dialog or a browser shortcut. */
+function isAppShortcut(e: KeyboardEvent) {
+  return !(
+    e.target instanceof HTMLInputElement ||
+    document.querySelector('dialog[open]') ||
+    e.ctrlKey ||
+    e.metaKey ||
+    e.altKey
+  );
+}
+
+const walk = new WalkMode({
+  canvas: renderer.domElement,
+  camera,
+  scene,
+  house,
+  door,
+  hud: el('walk-hud'),
+  text: () => ({ doorBlocked: uiText[lang].walkDoorBlocked }),
+  toggleDoor: () => toggleDoor(),
+  selectFromObject: (obj) => selectFromObject(obj),
+  acceptKey: isAppShortcut,
+});
 
 const originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
 const highlightMaterials: THREE.Material[] = [];
@@ -236,9 +261,10 @@ function updateDetailCard() {
 
 function updateViewLabels() {
   const t = uiText[lang];
-  el('view-label').textContent = t.views[activeView];
-  el('assumption-label').textContent =
-    activeView === 'back'
+  el('view-label').textContent = walk.active ? t.views.walk : t.views[activeView];
+  el('assumption-label').textContent = walk.active
+    ? t.assumptions.walk
+    : activeView === 'back'
       ? t.assumptions.back
       : activeView === 'interior'
         ? t.assumptions.interior
@@ -252,9 +278,10 @@ function updateViewLabels() {
 function updateToolbarLabels() {
   const t = uiText[lang];
   el('light-label').textContent = night ? t.nightLabel : t.dayLabel;
-  el('door-label').textContent = doorOpen ? t.doorCloseLabel : t.doorOpenLabel;
+  el('door-label').textContent = door.open ? t.doorCloseLabel : t.doorOpenLabel;
   el('cutaway-label').textContent = cutaway ? t.cutawayCloseLabel : t.cutawayOpenLabel;
   el('tour-label').textContent = touring ? t.tourStopLabel : t.tourStartLabel;
+  el('walk-label').textContent = walk.active ? t.walkStopLabel : t.walkStartLabel;
   el('reset-label').textContent = t.resetLabel;
   el('exposure-label').textContent = t.exposureLabel;
 }
@@ -282,7 +309,7 @@ function setLanguage(nextLang: Lang) {
   el('proverb-sub').textContent = t.proverbSub;
   el('scene-status').textContent = t.sceneStatusReady;
   el('caption-left').textContent = t.captionLeft;
-  el('gesture-hint').textContent = t.gestureHint;
+  el('gesture-hint').textContent = walk.active ? t.walkHint : t.gestureHint;
 
   el('help-category').textContent = t.helpCategory;
   el('help-title').textContent = t.helpTitle;
@@ -320,7 +347,7 @@ function setCutaway(open: boolean) {
   cutaway = open;
   house.parts.roof.visible = !cutaway;
   house.ceilingGroup.visible = !cutaway;
-  if (cutaway && activeView !== 'interior') {
+  if (cutaway && activeView !== 'interior' && !walk.active) {
     const prevDamping = controls.enableDamping;
     controls.enableDamping = false;
     controls.target.set(0, 3.1, 0);
@@ -340,6 +367,7 @@ function toggleCutaway() {
 }
 
 function setView(view: View) {
+  if (walk.active) leaveWalk();
   stopTour();
   activeView = view;
   if (window.scrollY > 0) window.scrollTo(0, 0);
@@ -460,6 +488,7 @@ renderer.domElement.addEventListener('pointercancel', (e) => {
 
 renderer.domElement.addEventListener('pointerup', (event) => {
   activePointers.delete(event.pointerId);
+  if (walk.active) return; // walk mode handles its own clicks (walk/input.ts)
   const start = pointerStart;
   if (
     !start ||
@@ -479,19 +508,71 @@ renderer.domElement.addEventListener('pointerup', (event) => {
   );
   raycaster.setFromCamera(pointer, camera);
   const hit = raycaster.intersectObject(house.root, true)[0];
-  let obj: THREE.Object3D | null = hit?.object || null;
+  selectFromObject(hit?.object || null);
+});
+
+/** Select the semantic part that owns a clicked mesh, or clear the selection. */
+function selectFromObject(hitObject: THREE.Object3D | null) {
+  let obj = hitObject;
   while (obj && !obj.userData.partId) obj = obj.parent;
   selectPart(obj ? (obj.userData.partId as PartId) : null);
-});
+}
+
+function syncWalkUi() {
+  const on = walk.active;
+  document.body.classList.toggle('walking', on);
+  el('walk-button').setAttribute('aria-pressed', String(on));
+  // Zoom and the orbit tour have no meaning in first person.
+  for (const id of ['zoom-in', 'zoom-out', 'tour-button']) el<HTMLButtonElement>(id).disabled = on;
+  // No orbit preset is active while walking; setView() re-marks the chosen one on exit.
+  document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((b) => {
+    const active = !on && b.dataset.view === activeView;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
+  el('gesture-hint').textContent = on ? uiText[lang].walkHint : uiText[lang].gestureHint;
+  updateToolbarLabels();
+  updateViewLabels();
+}
+
+function enterWalk() {
+  if (walk.active) return;
+  stopTour();
+  if (cutaway) setCutaway(false);
+  // OrbitControls.update() moves the camera even when disabled, so it is also skipped in frame().
+  controls.enabled = false;
+  walk.enter();
+  syncWalkUi();
+}
+
+/** Leave walk mode without choosing a camera; callers set the orbit view next. */
+function leaveWalk() {
+  walk.exit();
+  controls.enabled = true;
+  syncWalkUi();
+}
+
+function exitWalk() {
+  if (!walk.active) return;
+  leaveWalk();
+  setView(activeView);
+}
+
+function toggleWalk() {
+  if (walk.active) exitWalk();
+  else enterWalk();
+}
 
 controls.addEventListener('start', stopTour);
 
-function toggleDoor() {
-  doorOpen = !doorOpen;
-  el('door-button').setAttribute('aria-pressed', String(doorOpen));
-  el('door-label').textContent = doorOpen
+/** Returns the veto reason when closing is refused (walk mode), otherwise null. */
+function toggleDoor(): string | null {
+  const refused = door.toggle();
+  el('door-button').setAttribute('aria-pressed', String(door.open));
+  el('door-label').textContent = door.open
     ? uiText[lang].doorCloseLabel
     : uiText[lang].doorOpenLabel;
+  return refused;
 }
 
 function toggleNight() {
@@ -530,9 +611,13 @@ document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((b) =>
 el('lang-toggle').addEventListener('click', toggleLanguage);
 el('reset-camera').addEventListener('click', () => setView('perspective'));
 el('day-night').addEventListener('click', toggleNight);
-el('door-button').addEventListener('click', toggleDoor);
+el('door-button').addEventListener('click', () => {
+  const refused = toggleDoor();
+  if (refused) walk.showMessage(refused);
+});
 el('cutaway-button').addEventListener('click', toggleCutaway);
 el('tour-button').addEventListener('click', toggleTour);
+el('walk-button').addEventListener('click', toggleWalk);
 el('clear-selection').addEventListener('click', () => selectPart(null));
 el('zoom-in').addEventListener('click', () => zoom(0.82));
 el('zoom-out').addEventListener('click', () => zoom(1.22));
@@ -560,15 +645,16 @@ for (const name of ['help', 'references']) {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (
-    e.target instanceof HTMLInputElement ||
-    document.querySelector('dialog[open]') ||
-    e.ctrlKey ||
-    e.metaKey ||
-    e.altKey
-  )
+  if (!isAppShortcut(e)) return;
+  const key = e.key.toLowerCase();
+  if (walk.active) {
+    // W A S D (and D for the door) belong to walking; only non-conflicting shortcuts remain.
+    if (key === 'escape' || key === 'j') exitWalk();
+    else if (key === 'l') toggleLanguage();
+    else if (key === 'n') toggleNight();
     return;
-  switch (e.key.toLowerCase()) {
+  }
+  switch (key) {
     case 'r':
       setView('perspective');
       break;
@@ -580,6 +666,9 @@ window.addEventListener('keydown', (e) => {
       break;
     case 'i':
       setView('interior');
+      break;
+    case 'j':
+      enterWalk();
       break;
     case 'n':
       toggleNight();
@@ -611,11 +700,9 @@ function frame(time: number) {
   previousTime = time;
   frameCount++;
 
-  const targetDoor = doorOpen ? Math.PI * 0.48 : 0;
-  doorAngle = THREE.MathUtils.lerp(doorAngle, targetDoor, 1 - Math.exp(-8 * dt));
-  if (Math.abs(doorAngle - targetDoor) < 0.002) doorAngle = targetDoor;
-  house.doorLeft.rotation.y = -doorAngle;
-  house.doorRight.rotation.y = doorAngle;
+  door.update(dt);
+  house.doorLeft.rotation.y = -door.angle;
+  house.doorRight.rotation.y = door.angle;
 
   const targetNight = night ? 1 : 0;
   nightMix = THREE.MathUtils.lerp(nightMix, targetNight, 1 - Math.exp(-5 * dt));
@@ -624,7 +711,7 @@ function frame(time: number) {
   (scene.background as THREE.Color).copy(dayBg).lerp(nightBg, nightMix);
   (scene.fog as THREE.Fog).color.copy(scene.background as THREE.Color);
 
-  const indoor = activeView === 'interior' || cutaway;
+  const indoor = walk.active ? walk.isIndoors() || cutaway : activeView === 'interior' || cutaway;
   hemi.intensity = THREE.MathUtils.lerp(indoor ? 3.1 : 2.1, indoor ? 1.3 : 0.65, nightMix);
   ambient.intensity = THREE.MathUtils.lerp(indoor ? 0.95 : 0.35, indoor ? 0.45 : 0.22, nightMix);
   sun.intensity = THREE.MathUtils.lerp(3.2, 1.1, nightMix);
@@ -633,7 +720,9 @@ function frame(time: number) {
   doorwayLight.position.set(indoor ? -0.9 : 0, indoor ? 4.35 : 4.1, indoor ? 1.4 : 5.9);
   doorwayLight.intensity = indoor ? THREE.MathUtils.lerp(18, 32, nightMix) : nightMix * 35;
 
-  controls.update(dt);
+  // Walking keeps the tighter 50 ms step: larger steps could tunnel through thin colliders.
+  if (walk.active) walk.update(Math.min(rawDt, 0.05));
+  else controls.update(dt);
   renderer.render(scene, camera);
   if (!renderPaused) requestAnimationFrame(frame);
 }
@@ -650,13 +739,14 @@ const diagnostics = {
     selected,
     night,
     nightMix,
-    doorOpen,
-    doorAngle,
+    doorOpen: door.open,
+    doorAngle: door.angle,
     cutaway,
     roofVisible: house.parts.roof.visible,
     ceilingVisible: house.ceilingGroup.visible,
     touring,
     view: activeView,
+    walking: walk.active,
     camera: camera.position.toArray(),
     target: controls.target.toArray(),
     exposure: renderer.toneMappingExposure,
@@ -689,8 +779,15 @@ const diagnostics = {
   setCutaway: (open: boolean) => setCutaway(open),
   setLanguage: (nextLang: Lang) => setLanguage(nextLang),
   renderNow: () => {
-    controls.update(0);
+    if (walk.active) walk.update(0);
+    else controls.update(0);
     renderer.render(scene, camera);
+  },
+  walk: {
+    enter: () => enterWalk(),
+    exit: () => exitWalk(),
+    teleport: (x: number, z: number, yaw?: number) => walk.teleport({ x, z, yaw }),
+    snapshot: () => walk.snapshot(),
   },
   setPaused: (paused: boolean) => {
     const wasPaused = renderPaused;

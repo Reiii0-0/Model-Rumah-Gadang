@@ -216,6 +216,7 @@ export const uiText = {
       side: 'Tampak Samping',
       back: 'Tampak Belakang · Asumsi',
       interior: 'Ruang Dalam · Galeri PDIKM',
+      walk: 'Jalan · Sudut Pandang Pengunjung',
     },
     viewButtons: {
       perspective: '¾',
@@ -229,6 +230,7 @@ export const uiText = {
       default: 'Fasad dan proporsi mengacu pada foto dokumentasi PDIKM',
       back: 'Sisi belakang disusun simetris karena ketiadaan foto pembanding',
       interior: 'Ruang dalam mengacu pada foto Inside the PDIKM.JPG (CC BY-SA 3.0)',
+      walk: 'Tabrakan didekati kotak sejajar sumbu · tinggi mata 1,6 m',
     },
     dayLabel: 'Siang',
     nightLabel: 'Malam',
@@ -238,6 +240,11 @@ export const uiText = {
     cutawayCloseLabel: 'Tutup atap',
     tourStartLabel: 'Tur kamera',
     tourStopLabel: 'Hentikan tur',
+    walkStartLabel: 'Jalan',
+    walkStopLabel: 'Selesai jalan',
+    walkHint:
+      'W A S D jalan · Shift lari · Tahan dan seret untuk melihat · Klik pintu untuk buka/tutup · Klik bagian rumah untuk detail · Esc keluar',
+    walkDoorBlocked: 'Menyingkir dari ambang pintu dulu',
     resetLabel: 'Reset',
     exposureLabel: 'Eksposur',
     gestureHint:
@@ -253,8 +260,12 @@ export const uiText = {
         'Klik langsung bagian bangunan pada kanvas 3D atau pilih dari daftar kiri. Gunakan tombol Dalam atau Buka atap untuk meninjau ruang pamer PDIKM.',
       ],
       [
+        'Mode Jalan',
+        'Tekan J atau tombol Jalan untuk menjelajah sebagai pengunjung: W A S D untuk berjalan, Shift untuk berlari, tahan dan seret untuk melihat sekeliling. Klik pintu serambi untuk membuka atau menutupnya, klik bagian rumah untuk membaca detailnya. Esc atau tombol sudut pandang untuk kembali. Tersedia pada perangkat dengan papan ketik.',
+      ],
+      [
         'Pintasan Papan Ketik',
-        'R: reset kamera · D: buka/tutup pintu · C: buka/tutup atap · I: kamera ruang dalam · N: siang/malam · T: tur otomatis · L: ganti bahasa ID/MIN · Esc: tutup dialog.',
+        'R: reset kamera · D: buka/tutup pintu · C: buka/tutup atap · I: kamera ruang dalam · J: mode jalan · N: siang/malam · T: tur otomatis · L: ganti bahasa ID/MIN · Esc: tutup dialog atau keluar dari mode jalan.',
       ],
     ],
     helpFooter:
@@ -296,6 +307,7 @@ export const uiText = {
       side: 'Tampak Sampiang',
       back: 'Tampak Balakang · Asumsi',
       interior: 'Ruang Dalam · Pustaka PDIKM',
+      walk: 'Bajalan · Pandangan Pangunjuang',
     },
     viewButtons: {
       perspective: '¾',
@@ -309,6 +321,7 @@ export const uiText = {
       default: 'Fasad muko jo ukuran marujuak foto dokumentasi PDIKM',
       back: 'Sisi balakang disusun simetris karano alun ado foto pamandiang',
       interior: 'Ruang dalam marujuak foto Inside the PDIKM.JPG (CC BY-SA 3.0)',
+      walk: 'Tabrakan didakati kotak sajajar sumbu · tinggi mato 1,6 m',
     },
     dayLabel: 'Siang',
     nightLabel: 'Malam',
@@ -318,6 +331,11 @@ export const uiText = {
     cutawayCloseLabel: 'Tutuik atok',
     tourStartLabel: 'Putar kamera',
     tourStopLabel: 'Hentikan putaran',
+    walkStartLabel: 'Bajalan',
+    walkStopLabel: 'Baranti bajalan',
+    walkHint:
+      'W A S D bajalan · Shift balari · Tahan jo gesa untuak mancaliak · Klik pintu untuak bukak/tutuik · Klik bagian rumah untuak keterangan · Esc kalua',
+    walkDoorBlocked: 'Manyisiahlah dari ambang pintu dulu',
     resetLabel: 'Reset',
     exposureLabel: 'Cahayo',
     gestureHint:
@@ -333,8 +351,12 @@ export const uiText = {
         'Klik lansuang bagian rumah di kanvas 3D atau piliah dari daftar kida. Gunokan tombol Dalam atau Bukak atok untuak mancaliak ruang pamer PDIKM.',
       ],
       [
+        'Mode Bajalan',
+        'Takan J atau tombol Bajalan untuak manjalajahi rumah sarupo pangunjuang: W A S D untuak bajalan, Shift untuak balari, tahan jo gesa untuak mancaliak sakaliliang. Klik pintu surambi untuak mambukak atau manutuiknyo, klik bagian rumah untuak mambaco keterangannyo. Esc atau tombol suduik pandang untuak baliak. Tasadio di parangkek nan ado papan ketik.',
+      ],
+      [
         'Tombol Papan Ketik',
-        'R: reset kamera · D: bukak/tutuik pintu · C: bukak/tutuik atok · I: kamera ruang dalam · N: siang/malam · T: putar otomatis · L: ganti bahaso ID/MIN · Esc: tutuik jandela.',
+        'R: reset kamera · D: bukak/tutuik pintu · C: bukak/tutuik atok · I: kamera ruang dalam · J: mode bajalan · N: siang/malam · T: putar otomatis · L: ganti bahaso ID/MIN · Esc: tutuik jandela atau kalua dari mode bajalan.',
       ],
     ],
     helpFooter:

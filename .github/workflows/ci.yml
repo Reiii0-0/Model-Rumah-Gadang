@@ -33,6 +33,9 @@ jobs:
       - name: Sync reference assets & typecheck
         run: node scripts/sync-references.mjs && npm run typecheck
 
+      - name: Walk-mode headless simulation
+        run: npm run sim:walk
+
       - name: Build production bundle
         run: npm run build
 
