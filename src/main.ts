@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildHouse } from './model/house';
 import type { ModelPhase } from './model/house';
+import { SITE } from './model/layout';
 import { partInfo, uiText } from './model/parts';
 import type { Lang, PartId } from './model/parts';
 import './style.css';
@@ -89,32 +90,34 @@ const groundMaterial = new THREE.MeshStandardMaterial({ color: '#b4b8a0', roughn
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(350, 350), groundMaterial);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
-ground.position.y = -0.03;
+ground.position.y = SITE.groundY;
 scene.add(ground);
 
 const platform = new THREE.Mesh(
-  new THREE.BoxGeometry(31, 0.18, 19),
+  new THREE.BoxGeometry(...SITE.platform.size),
   new THREE.MeshStandardMaterial({ color: '#c2beaa', roughness: 0.94 })
 );
-platform.position.set(0, -0.02, 0.7);
+platform.position.set(...SITE.platform.center);
 platform.receiveShadow = true;
 scene.add(platform);
 
 const path = new THREE.Mesh(
-  new THREE.BoxGeometry(2.6, 0.035, 12),
+  new THREE.BoxGeometry(...SITE.path.size),
   new THREE.MeshStandardMaterial({ color: '#8f9686', roughness: 1 })
 );
-path.position.set(0, 0.085, 12);
+path.position.set(...SITE.path.center);
 path.receiveShadow = true;
 scene.add(path);
 
 const bushMat = new THREE.MeshStandardMaterial({ color: '#5c7148', roughness: 0.96 });
-const shrubs = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.45, 1), bushMat, 28);
+const hedge = SITE.shrubs;
+const shrubCount = hedge.perSide * 2;
+const shrubs = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(hedge.radius, 1), bushMat, shrubCount);
 const dummy = new THREE.Object3D();
-for (let i = 0; i < 28; i++) {
-  const side = i < 14 ? -1 : 1;
-  const j = i % 14;
-  dummy.position.set(side * (14.2 + 0.16 * Math.sin(j)), 0.36, -7.4 + j * 1.08);
+for (let i = 0; i < shrubCount; i++) {
+  const side = i < hedge.perSide ? -1 : 1;
+  const j = i % hedge.perSide;
+  dummy.position.set(side * (hedge.x + 0.16 * Math.sin(j)), 0.36, hedge.zStart + j * hedge.zStep);
   dummy.scale.set(1, 0.8 + Math.sin(j * 2) * 0.1, 1);
   dummy.rotation.y = j * 1.9;
   dummy.updateMatrix();

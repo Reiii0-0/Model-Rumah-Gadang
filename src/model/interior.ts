@@ -1,9 +1,21 @@
 import * as THREE from 'three';
 import { createArchivalPhotoMaterial, createPlaqueMaterial } from './materials';
+import { ANJUANG, COLUMN_X, COLUMN_Z, FRONT_DOOR_BAY, HALL_FLOOR, INNER_LINING } from './layout';
+
+/** Axis-aligned world box around one free-standing furniture assembly. */
+export interface FurnitureBounds {
+  name: string;
+  box: THREE.Box3;
+}
 
 export interface InteriorBuild {
   group: THREE.Group;
   ceilingGroup: THREE.Group;
+  /**
+   * Measured here, before mergeStaticPart() fuses the meshes and the per-object
+   * extents are lost. Rotated assemblies get a conservative (larger) box.
+   */
+  furniture: FurnitureBounds[];
 }
 
 export function buildInterior(
@@ -82,38 +94,35 @@ export function buildInterior(
   }
 
   // 1. Woven rattan floor mat (tikar rotan) & stepped-up Anjuang platforms
-  box(group, 'main-hall-rattan-floor', [16.6, 0.03, 7.68], [0, 2.055, 0], rattan);
+  box(group, 'main-hall-rattan-floor', [HALL_FLOOR.length, HALL_FLOOR.thickness, HALL_FLOOR.depth], [0, HALL_FLOOR.centerY, 0], rattan);
   for (const x of [-8, -6, -4, -2, 0, 2, 4, 6, 8]) {
     box(group, `floor-batten-x-${x}`, [0.08, 0.036, 7.7], [x, 2.058, 0], timber);
   }
-  for (const z of [-3.65, 0, 3.65]) {
+  for (const z of COLUMN_Z) {
     box(group, `floor-batten-z-${z}`, [16.6, 0.036, 0.08], [0, 2.058, z], timber);
   }
   for (const sign of [-1, 1]) {
-    const ax = sign * 9.7;
-    box(group, `anjuang-rattan-floor-${sign}`, [2.7, 0.03, 7.68], [ax, 2.565, 0], rattan);
-    box(group, `anjuang-step-riser-${sign}`, [0.28, 0.52, 7.68], [sign * 8.32, 2.3, 0], timber);
-    box(group, `anjuang-step-mid-${sign}`, [0.26, 0.26, 2.4], [sign * 8.12, 2.17, 0], mahogany);
+    const { floor, riser, step, rail } = ANJUANG;
+    box(group, `anjuang-rattan-floor-${sign}`, [floor.width, floor.thickness, HALL_FLOOR.depth], [sign * floor.x, floor.centerY, 0], rattan);
+    box(group, `anjuang-step-riser-${sign}`, [riser.width, riser.height, HALL_FLOOR.depth], [sign * riser.x, riser.centerY, 0], timber);
+    box(group, `anjuang-step-mid-${sign}`, [...step.size], [sign * step.x, step.centerY, 0], mahogany);
     // Low wooden balustrade on the anjuang edge with central opening
-    for (const zRange of [
-      [-3.5, -1.2],
-      [1.2, 3.5],
-    ]) {
+    for (const zRange of rail.spans) {
       const zCenter = (zRange[0] + zRange[1]) / 2;
       const zLen = zRange[1] - zRange[0];
-      box(group, `anjuang-rail-top-${sign}-${zCenter}`, [0.09, 0.07, zLen], [sign * 8.35, 3.25, zCenter], mahogany);
-      box(group, `anjuang-rail-bot-${sign}-${zCenter}`, [0.07, 0.06, zLen], [sign * 8.35, 2.68, zCenter], timber);
+      box(group, `anjuang-rail-top-${sign}-${zCenter}`, [0.09, rail.topHeight, zLen], [sign * rail.x, rail.topY, zCenter], mahogany);
+      box(group, `anjuang-rail-bot-${sign}-${zCenter}`, [0.07, 0.06, zLen], [sign * rail.x, 2.68, zCenter], timber);
       for (let p = 0; p <= 5; p++) {
         const zp = zRange[0] + (zLen * p) / 5;
-        box(group, `anjuang-baluster-${sign}-${zCenter}-${p}`, [0.05, 0.55, 0.05], [sign * 8.35, 2.96, zp], timber);
+        box(group, `anjuang-baluster-${sign}-${zCenter}-${p}`, [0.05, 0.55, 0.05], [sign * rail.x, 2.96, zp], timber);
       }
     }
   }
 
   // 2. Column plinth bases (umpak dalam), carved neck bands (cincin ukir tiang), and tie-beams (balok tarik)
-  for (const x of [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10]) {
+  for (const x of COLUMN_X) {
     const floorY = Math.abs(x) === 10 ? 2.56 : 2.05;
-    for (const z of [-3.65, 0, 3.65]) {
+    for (const z of COLUMN_Z) {
       box(group, `pillar-plinth-${x}-${z}`, [0.42, 0.14, 0.42], [x, floorY + 0.07, z], darkBronze);
       box(group, `pillar-carved-band-${x}-${z}`, [0.33, 0.14, 0.33], [x, floorY + 1.05, z], ornament);
       box(group, `pillar-capital-${x}-${z}`, [0.36, 0.12, 0.36], [x, 5.06, z], timber);
@@ -123,7 +132,7 @@ export function buildInterior(
     // King post rising to ceiling ridge
     box(ceilingGroup, `king-post-${x}`, [0.16, 1.05, 0.16], [x, 5.82, 0], timber);
   }
-  for (const z of [-3.65, 0, 3.65]) {
+  for (const z of COLUMN_Z) {
     box(group, `tie-beam-longitudinal-${z}`, [21.8, 0.2, 0.22], [0, 5.22, z], timber);
   }
 
@@ -156,11 +165,11 @@ export function buildInterior(
   box(ceilingGroup, 'ceiling-ridge-beam', [22.1, 0.14, 0.18], [0, 6.32, 0], timber);
 
   // 4. Interior woven-bamboo wall lining (panel bilik bambu dinding dalam) with window & door cutouts
-  for (const z of [-3.84, 3.84]) {
+  for (const z of [-INNER_LINING.z, INNER_LINING.z]) {
     const isFront = z > 0;
-    for (let i = 0; i < 11; i++) {
-      const x = -10 + i * 2;
-      if (isFront && i === 5) continue;
+    for (let i = 0; i < COLUMN_X.length; i++) {
+      const x = COLUMN_X[i];
+      if (isFront && i === FRONT_DOOR_BAY) continue;
       const dy = i === 0 || i === 10 ? 0.26 : 0;
       // Left and right bamboo wall strips flanking each window bay
       box(group, `inner-wall-left-${z}-${i}`, [0.68, 2.95, 0.03], [x - 0.62, 3.58 + dy * 0.3, z], bamboo);
@@ -190,7 +199,7 @@ export function buildInterior(
   }
   // End walls interior bamboo lining
   for (const sign of [-1, 1]) {
-    const x = sign * 10.94;
+    const x = sign * INNER_LINING.endX;
     for (let j = 0; j < 4; j++) {
       const z = -2.7 + j * 1.8;
       box(group, `inner-end-bamboo-${sign}-${j}`, [0.03, 2.65, 1.68], [x, 3.9, z], bamboo);
@@ -293,11 +302,13 @@ export function buildInterior(
   }
 
   // 8. Glass-and-Timber Museum Display Vitrines (etalase kaca koleksi naskah & adat)
+  const vitrines: THREE.Group[] = [];
   function addVitrine(id: string, x: number, z: number, w: number, d: number, h = 1.62) {
     const v = new THREE.Group();
     v.name = `vitrine-${id}`;
     v.position.set(x, 2.05, z);
     group.add(v);
+    vitrines.push(v);
     // Base cabinet, mid shelf, top cap
     box(v, `${id}-base`, [w, 0.38, d], [0, 0.19, 0], mahogany);
     box(v, `${id}-shelf-1`, [w - 0.08, 0.035, d - 0.08], [0, 0.82, 0], creamShelf);
@@ -363,5 +374,14 @@ export function buildInterior(
     }
   }
 
-  return { group, ceilingGroup };
+  // Collision footprints for walk mode. The group is still unparented here, so its
+  // local frame equals the house frame. Column plinths sit inside the column colliders
+  // and the chandeliers hang above head height, so neither needs a box here.
+  group.updateMatrixWorld(true);
+  const furniture: FurnitureBounds[] = [plaqueGroup, deskGroup, tableGroup, ...vitrines].map((g) => ({
+    name: g.name,
+    box: new THREE.Box3().setFromObject(g),
+  }));
+
+  return { group, ceilingGroup, furniture };
 }
