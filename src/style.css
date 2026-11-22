@@ -681,6 +681,15 @@ a {
   background: var(--bg-panel);
 }
 
+.tool-group button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tool-group button:disabled:hover {
+  background: var(--bg-paper);
+}
+
 .tool-group button[aria-pressed="true"] {
   background: var(--marawa-black);
   color: #faf7f0;
@@ -762,6 +771,45 @@ body.night .icon-moon {
   font-weight: 500;
   color: var(--ink-muted);
   margin: 0;
+}
+
+/* Walk Mode (first-person) */
+.walk-hud {
+  position: absolute;
+  top: 58px;
+  left: 24px;
+  max-width: min(46ch, calc(100% - 48px));
+  padding: 8px 12px;
+  border-left: 3px solid var(--marawa-gold);
+  border-radius: 4px;
+  background: rgba(28, 24, 21, 0.82);
+  color: #faf7f0;
+  font: 500 11px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+  white-space: pre;
+  pointer-events: none;
+}
+
+.walk-hud:empty {
+  display: none;
+}
+
+body.walking #viewport canvas {
+  cursor: grab;
+}
+
+body.walking #viewport canvas.can-interact {
+  cursor: pointer;
+}
+
+body.walking #viewport canvas.dragging {
+  cursor: grabbing;
+}
+
+/* Walking needs a keyboard; touch-first devices keep the orbit viewer only. */
+@media (pointer: coarse) {
+  #walk-button {
+    display: none;
+  }
 }
 
 /* Modal Dialogs */
@@ -902,6 +950,7 @@ body.night .status-dot {
 .capture .view-switch,
 .capture .scene-caption,
 .capture .toolbar,
+.capture .walk-hud,
 .capture .gesture-hint {
   display: none;
 }

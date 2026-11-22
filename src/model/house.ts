@@ -3,9 +3,15 @@ import type { PartId } from './parts';
 import {createSurfaceMaterials,createSignMaterial} from './materials';
 import {buildInterior} from './interior';
 import {mergeStaticPart} from './merge-static';
+import {COLUMN,COLUMN_X,COLUMN_Z,DOOR,FLOOR,FRONT_DOOR_BAY,PORCH,SILL,STAIRS,WALL,WALL_BAY,stepCenterZ,stepTop} from './layout';
+import type {FurnitureBounds} from './interior';
 
 export type ModelPhase = 'blockout' | 'form' | 'lookdev' | 'interaction';
-export interface House { root: THREE.Group; parts: Record<PartId, THREE.Group>; doorLeft: THREE.Group; doorRight: THREE.Group; ceilingGroup: THREE.Group; }
+export interface House {
+  root: THREE.Group; parts: Record<PartId, THREE.Group>; doorLeft: THREE.Group; doorRight: THREE.Group; ceilingGroup: THREE.Group;
+  /** World-space boxes of free-standing interior furniture, measured before static merging. */
+  furniture: FurnitureBounds[];
+}
 
 export function buildHouse(phase: ModelPhase = 'interaction'): House {
   const root = new THREE.Group(); root.name = 'pdikm-house';
@@ -30,38 +36,38 @@ export function buildHouse(phase: ModelPhase = 'interaction'): House {
     const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(12,points.length*2), radius, 5, false), material);
     mesh.name=name; mesh.castShadow=true; mesh.receiveShadow=true; parent.add(mesh); return mesh;
   }
-  // One unit is nominally one meter; dimensions are visual estimates, not a survey.
-  box(parts.body,'raised-floor',[22.4,.28,8],[0,1.9,0],timber);
+  // One unit is nominally one meter; dimensions are visual estimates, not a survey (see layout.ts).
+  box(parts.body,'raised-floor',[FLOOR.length,FLOOR.thickness,FLOOR.depth],[0,FLOOR.centerY,0],timber);
   const interiorBuild = buildInterior(surfaces);
   while (interiorBuild.group.children.length > 0) {
     parts.interior.add(interiorBuild.group.children[0]);
   }
   const ceilingGroup = interiorBuild.ceilingGroup;
-  for (const x of [-10,-8,-6,-4,-2,0,2,4,6,8,10]) for (const z of [-3.65,0,3.65]) {
-    box(parts.pillars,`column-${x}-${z}`,[.28,5.25,.28],[x,2.7,z],timber);
+  for (const x of COLUMN_X) for (const z of COLUMN_Z) {
+    box(parts.pillars,`column-${x}-${z}`,[COLUMN.size,COLUMN.height,COLUMN.size],[x,COLUMN.centerY,z],timber);
     box(parts.pillars,`stone-foot-${x}-${z}`,[.52,.24,.52],[x,.12,z],stone);
   }
-  for (const z of [-4,4]) {
+  for (const z of [-WALL.z,WALL.z]) {
     const isFront=z>0;
-    box(parts.body,`sill-band-${z}`,[22.4,.48,.22],[0,2.25,z],red);
-    box(parts.body,`upper-frieze-${z}`,[22.4,.4,.22],[0,5.2,z],red);
-    for (let i=0;i<11;i++) {
-      const x=-10+i*2;
-      if(isFront&&i===5) continue;
+    box(parts.body,`sill-band-${z}`,[FLOOR.length,SILL.height,WALL.thickness],[0,SILL.centerY,z],red);
+    box(parts.body,`upper-frieze-${z}`,[FLOOR.length,.4,WALL.thickness],[0,5.2,z],red);
+    for (let i=0;i<COLUMN_X.length;i++) {
+      const x=COLUMN_X[i];
+      if(isFront&&i===FRONT_DOOR_BAY) continue;
       const dy=(i===0||i===10)?.26:0;
-      box(parts.body,`wall-pier-${z}-${i}`,[.76,2.65-dy*.4,.22],[x-.62,3.72+dy*.5,z],wall);
-      box(parts.body,`wall-return-${z}-${i}`,[.3,2.65-dy*.4,.22],[x+.85,3.72+dy*.5,z],wall);
-      box(parts.body,`wall-spandrel-${z}-${i}`,[1.45,1.0-dy*.35,.22],[x+.25,4.55+dy*.45,z],red);
+      box(parts.body,`wall-pier-${z}-${i}`,[WALL_BAY.pier.width,2.65-dy*.4,WALL.thickness],[x+WALL_BAY.pier.offset,3.72+dy*.5,z],wall);
+      box(parts.body,`wall-return-${z}-${i}`,[WALL_BAY.ret.width,2.65-dy*.4,WALL.thickness],[x+WALL_BAY.ret.offset,3.72+dy*.5,z],wall);
+      box(parts.body,`wall-spandrel-${z}-${i}`,[1.45,1.0-dy*.35,WALL.thickness],[x+.25,4.55+dy*.45,z],red);
       const w=box(parts.windows,`window-recess-${z}-${i}`,[.94,1.42,.07],[x+.23,3.2+dy,z+(isFront?-.07:.07)],glass);
       w.userData.observed=isFront;
       for(const dx of [-.51,.51]) box(parts.windows,`window-jamb-${z}-${i}-${dx}`,[.1,1.58,.16],[x+.23+dx,3.2+dy,z+(isFront?.07:-.07)],trim);
       for(const y of [2.43+dy,3.97+dy]) box(parts.windows,`window-lintel-${z}-${i}-${y}`,[1.12,.09,.16],[x+.23,y,z+(isFront?.07:-.07)],trim);
       box(parts.windows,`window-mullion-${z}-${i}`,[.045,1.42,.08],[x+.23,3.2+dy,z+(isFront?.02:-.02)],timber);
     }
-    for(const x of [-11.1,11.1]) box(parts.body,`facade-corner-${z}-${x}`,[.3,3.55,.3],[x,3.7,z],timber);
+    for(const x of [-WALL.endX,WALL.endX]) box(parts.body,`facade-corner-${z}-${x}`,[.3,3.55,.3],[x,3.7,z],timber);
   }
-  for(const x of [-11.1,11.1]) {
-    box(parts.body,`end-wall-${x}`,[.22,3.65,8],[x,3.75,0],red);
+  for(const x of [-WALL.endX,WALL.endX]) {
+    box(parts.body,`end-wall-${x}`,[WALL.thickness,3.65,FLOOR.depth],[x,3.75,0],red);
     box(parts.body,`raised-end-floor-${x}`,[2.8,.3,8],[x>0?9.8:-9.8,2.4,0],timber);
     box(parts.body,`raised-end-facade-${x}`,[2.6,.48,.22],[x>0?9.8:-9.8,5.32,4],red);
   }
@@ -124,25 +130,26 @@ export function buildHouse(phase: ModelPhase = 'interaction'): House {
     for(let i=0;i<40;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}
     const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(p,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(pts.flatMap((_,i)=>[i/40,0,i/40,1]),2));geo.setIndex(idx);geo.computeVertexNormals();
     const mesh=new THREE.Mesh(geo,roofMat);mesh.castShadow=true;mesh.receiveShadow=true;mesh.name=`porch-roof-${side}`;parts.roof.add(mesh);
-    box(parts.doors,`porch-pillar-${side}`,[.25,3.55,.3],[side*1.33,3.64,5.58],timber);
-    box(parts.doors,`porch-side-panel-${side}`,[.45,3.1,.22],[side*1.08,3.57,5.58],red);
+    box(parts.doors,`porch-pillar-${side}`,[...PORCH.pillar.size],[side*PORCH.pillar.x,PORCH.pillar.centerY,PORCH.pillar.z],timber);
+    box(parts.doors,`porch-side-panel-${side}`,[...PORCH.sidePanel.size],[side*PORCH.sidePanel.x,PORCH.sidePanel.centerY,PORCH.sidePanel.z],red);
   }
-  box(parts.doors,'porch-landing',[2.75,.23,1.8],[0,1.93,4.8],timber);
+  box(parts.doors,'porch-landing',[...PORCH.landing.size],[...PORCH.landing.center],timber);
   box(parts.doors,'porch-lintel',[2.6,.26,.3],[0,5.04,5.58],trim);
   const porchArch=new THREE.Shape();porchArch.moveTo(-.9,4.92);porchArch.lineTo(.9,4.92);porchArch.lineTo(.9,3.88);porchArch.bezierCurveTo(.75,4.02,.76,4.42,.48,4.58);porchArch.quadraticCurveTo(.22,4.74,0,4.74);porchArch.quadraticCurveTo(-.22,4.74,-.48,4.58);porchArch.bezierCurveTo(-.76,4.42,-.75,4.02,-.9,3.88);porchArch.closePath();
   const porchArchGeo=new THREE.ExtrudeGeometry(porchArch,{depth:.08,bevelEnabled:false,curveSegments:14});
   const pauv=porchArchGeo.getAttribute('uv');for(let i=0;i<pauv.count;i++)pauv.setXY(i,(pauv.getX(i)+.9)/1.8,(pauv.getY(i)-3.88)/1.04);
   const porchArchMesh=new THREE.Mesh(porchArchGeo,surfaces?.ornament||red);porchArchMesh.position.z=5.59;porchArchMesh.castShadow=true;porchArchMesh.name='porch-arch';parts.doors.add(porchArchMesh);
   tube(parts.doors,'porch-arch-trim',[new THREE.Vector3(-.9,3.88,5.68),new THREE.Vector3(-.75,4.28,5.68),new THREE.Vector3(-.48,4.58,5.68),new THREE.Vector3(0,4.74,5.68),new THREE.Vector3(.48,4.58,5.68),new THREE.Vector3(.75,4.28,5.68),new THREE.Vector3(.9,3.88,5.68)],.025,trim);
-  const doorLeft=new THREE.Group();doorLeft.name='door-left-hinge';doorLeft.position.set(-.82,2.04,5.26);parts.doors.add(doorLeft);
-  const doorRight=new THREE.Group();doorRight.name='door-right-hinge';doorRight.position.set(.82,2.04,5.26);parts.doors.add(doorRight);
-  for(const [pivot,s] of [[doorLeft,1],[doorRight,-1]] as const){box(pivot,`door-leaf-${s}`,[.81,2.68,.12],[s*.405,1.34,0],timber);for(const y of [.63,1.91]) box(pivot,`door-inset-${s}-${y}`,[.57,1.0,.04],[s*.405,y,.075],red);box(pivot,`door-handle-${s}`,[.035,.2,.08],[s*.69,1.23,.12],silver);}
-  for(let i=0;i<10;i++) {const h=(i+1)*.2;box(parts.stairs,`entry-step-${i}`,[2.45,h,.37],[0,h/2,9.1-i*.36],stone);}
+  const doorLeft=new THREE.Group();doorLeft.name='door-left-hinge';doorLeft.position.set(-DOOR.hingeX,DOOR.hingeY,DOOR.hingeZ);parts.doors.add(doorLeft);
+  const doorRight=new THREE.Group();doorRight.name='door-right-hinge';doorRight.position.set(DOOR.hingeX,DOOR.hingeY,DOOR.hingeZ);parts.doors.add(doorRight);
+  const [leafW,leafH]=DOOR.leaf;
+  for(const [pivot,s] of [[doorLeft,1],[doorRight,-1]] as const){box(pivot,`door-leaf-${s}`,[...DOOR.leaf],[s*leafW/2,leafH/2,0],timber);for(const y of [.63,1.91]) box(pivot,`door-inset-${s}-${y}`,[.57,1.0,.04],[s*.405,y,.075],red);box(pivot,`door-handle-${s}`,[.035,.2,.08],[s*.69,1.23,.12],silver);}
+  for(let i=0;i<STAIRS.steps;i++) {const h=stepTop(i);box(parts.stairs,`entry-step-${i}`,[STAIRS.width,h,STAIRS.depth],[0,h/2,stepCenterZ(i)],stone);}
   box(parts.stairs,'stair-base-pad',[2.95,.14,.85],[0,.07,9.52],stone);
   for(const side of [-1,1]){
-    for(let i=0;i<10;i++){const h=(i+1)*.2+.12;box(parts.stairs,`stair-cheek-${side}-${i}`,[.14,h,.38],[side*1.29,h/2,9.1-i*.36],red);}
-    tube(parts.stairs,`stair-handrail-${side}`,[new THREE.Vector3(side*1.29,.95,9.2),new THREE.Vector3(side*1.29,2.85,5.7)],.045,timber);
-    for(const t of [0,.33,.66,1])box(parts.stairs,`rail-post-${side}-${t}`,[.065,.85,.065],[side*1.29,.5+t*1.9,9.2-t*3.5],timber);
+    for(let i=0;i<STAIRS.steps;i++){const h=stepTop(i)+STAIRS.cheek.extra;box(parts.stairs,`stair-cheek-${side}-${i}`,[STAIRS.cheek.width,h,.38],[side*STAIRS.cheek.x,h/2,stepCenterZ(i)],red);}
+    tube(parts.stairs,`stair-handrail-${side}`,[new THREE.Vector3(side*STAIRS.cheek.x,.95,9.2),new THREE.Vector3(side*STAIRS.cheek.x,2.85,5.7)],.045,timber);
+    for(const t of [0,.33,.66,1])box(parts.stairs,`rail-post-${side}-${t}`,[.065,.85,.065],[side*STAIRS.cheek.x,.5+t*1.9,9.2-t*3.5],timber);
   }
   if(detailed) {
     const ornament=surfaces!.ornament;
@@ -164,5 +171,5 @@ export function buildHouse(phase: ModelPhase = 'interaction'): House {
   }
   for(const [id,group] of Object.entries(parts))if(id!=='doors')mergeStaticPart(group);
   mergeStaticPart(ceilingGroup);
-  return {root,parts,doorLeft,doorRight,ceilingGroup};
+  return {root,parts,doorLeft,doorRight,ceilingGroup,furniture:interiorBuild.furniture};
 }

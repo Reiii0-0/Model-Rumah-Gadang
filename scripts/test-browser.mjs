@@ -257,6 +257,127 @@ try {
     assert.equal((await snapshot()).touring, false);
   });
 
+  // Walk mode. Software WebGL in CI may render only ~1 frame per second, and each frame
+  // advances at most 50 ms of walking, so every step waits on a condition, never a duration.
+  const walkSnap = () => page.evaluate(() => window.__app.walk.snapshot());
+  const teleport = (x, z, yaw = 0) => page.evaluate((p) => window.__app.walk.teleport(...p), [x, z, yaw]);
+  async function holdKey(code, condition, arg) {
+    await page.keyboard.down(code);
+    try {
+      await waitForCondition(condition, arg, 120000);
+    } finally {
+      await page.keyboard.up(code);
+    }
+  }
+
+  await check('Walk mode: J/button enters first person, WASD moves, closed door blocks, Esc restores orbit', async () => {
+    await page.locator('#walk-button').click();
+    await waitForCondition(() => window.__app.snapshot().walking);
+    let w = await walkSnap();
+    assert.equal(w.active, true);
+    assert.deepEqual([w.x, w.z, w.yaw], [0, 14, 0]); // spawn on the path, facing the house
+    assert.equal(await page.locator('#zoom-in').isDisabled(), true);
+    assert.equal(await page.locator('#walk-button').getAttribute('aria-pressed'), 'true');
+    assert.match(await page.locator('#gesture-hint').textContent(), /W A S D/);
+    await capturePng('evidence/final/walk-entrance.png');
+
+    await page.locator('canvas').hover();
+    await holdKey('KeyW', () => window.__app.walk.snapshot().z < 13.5);
+    w = await walkSnap();
+    assert.ok(w.z < 13.5 && Math.abs(w.x) < 1e-6, 'W walks straight towards the house');
+
+    // From the top step, walking on stops at the closed door leaves (z = 5.26 + 0.08 + 0.3).
+    await teleport(0, 6.4);
+    await holdKey('KeyW', () => window.__app.walk.snapshot().z < 5.7);
+    await page.keyboard.down('KeyW');
+    await waitForCondition((f) => window.__app.snapshot().frameCount >= f + 3, (await snapshot()).frameCount, 60000);
+    await page.keyboard.up('KeyW');
+    w = await walkSnap();
+    assert.ok(Math.abs(w.z - 5.64) < 0.01, `stopped at the closed door, z=${w.z}`);
+    assert.ok(Math.abs(w.feet - 2.045) < 0.01, 'standing on the porch floor');
+
+    await page.keyboard.press('Escape');
+    await waitForCondition(() => !window.__app.snapshot().walking);
+    const s = await snapshot();
+    assert.equal(s.view, 'perspective');
+    assert.ok(distance(s) > 12, 'orbit camera restored');
+    assert.equal(await page.locator('#zoom-in').isDisabled(), false);
+    assert.equal(await page.locator('#walk-hud').isHidden(), true);
+
+    await page.keyboard.press('KeyJ');
+    await waitForCondition(() => window.__app.snapshot().walking);
+    await page.locator('[data-view="perspective"]').click();
+    await waitForCondition(() => !window.__app.snapshot().walking);
+  });
+
+  await check('Walk mode: click opens the door, doorway veto, threshold, indoor light, part selection, debug', async () => {
+    await page.keyboard.press('KeyJ');
+    await waitForCondition(() => window.__app.snapshot().walking);
+    await teleport(0, 6.6);
+    const r = await page.locator('canvas').boundingBox();
+    const cx = r.x + r.width / 2;
+    const cy = r.y + r.height / 2;
+    await page.mouse.click(cx - 60, cy); // left door leaf, straight ahead at eye height
+    await waitForCondition(() => window.__app.snapshot().doorAngle > 1.4);
+    assert.equal((await snapshot()).doorOpen, true);
+
+    await page.keyboard.press('KeyD'); // strafe, not the door shortcut, while walking
+    assert.equal((await snapshot()).doorOpen, true);
+
+    await teleport(0, 5.26); // in the doorway: closing would trap the visitor
+    await page.locator('#door-button').click();
+    await waitForCondition(() => window.__app.walk.snapshot().message !== '');
+    assert.equal((await snapshot()).doorOpen, true);
+    await waitForCondition(() => document.querySelector('#walk-hud').textContent.includes('»'));
+
+    // Past the column behind the door (right-hand gap), over the raised threshold, into the hall.
+    await teleport(0.6, 4.6);
+    await holdKey('KeyW', () => window.__app.walk.snapshot().indoors);
+    await waitForCondition(() => window.__app.snapshot().hemi > 3);
+    let w = await walkSnap();
+    assert.ok(w.z < 3.89 && w.feet > 2.06, `inside the hall on the floor, z=${w.z} feet=${w.feet}`);
+    await teleport(0.6, 2.9, 0.35);
+    await capturePng('evidence/final/walk-interior.png');
+
+    await teleport(3.2, -1.6);
+    await page.mouse.click(cx, cy + 120); // vitrine below eye level
+    await waitForCondition(() => window.__app.snapshot().selected === 'interior');
+
+    await page.keyboard.press('Backquote');
+    await waitForCondition(() => document.querySelector('#walk-hud').textContent.includes('collider aktif'));
+    assert.equal((await walkSnap()).debug, true);
+    await capturePng('evidence/final/walk-debug.png');
+    await page.keyboard.press('Backquote');
+
+    await page.keyboard.press('Escape');
+    await waitForCondition(() => !window.__app.snapshot().walking);
+    await page.keyboard.press('Escape'); // clear selection
+    await page.locator('#door-button').click();
+    await waitForCondition(() => window.__app.snapshot().doorAngle < 0.03);
+  });
+
+  await check('Walk mode: entering from the interior preset starts inside, language switch stays available', async () => {
+    await page.locator('[data-view="interior"]').click();
+    await page.keyboard.press('KeyJ');
+    await waitForCondition(() => window.__app.snapshot().walking);
+    const w = await walkSnap();
+    assert.equal(w.indoors, true);
+    assert.ok(Math.abs(w.x + 2.25) < 0.01 && Math.abs(w.z - 2.62) < 0.01, 'starts at the interior camera spot');
+    assert.equal(await page.locator('.view-switch button.active').count(), 0);
+
+    await page.keyboard.press('KeyL');
+    await waitForCondition(() => window.__app.snapshot().lang === 'min');
+    assert.equal(await page.locator('#walk-label').textContent(), 'Baranti bajalan');
+    assert.match(await page.locator('#view-label').textContent(), /Bajalan/);
+    await page.keyboard.press('KeyL');
+    await waitForCondition(() => window.__app.snapshot().lang === 'id');
+
+    await page.locator('#walk-button').click();
+    await waitForCondition(() => !window.__app.snapshot().walking);
+    assert.equal((await snapshot()).view, 'interior');
+    await page.locator('#reset-camera').click();
+  });
+
   await check('Help dialog and six licensed reference photos work in the production build', async () => {
     await page.locator('#help-button').click();
     assert.equal(await page.locator('#help-dialog').evaluate((e) => e.open), true);
@@ -333,6 +454,7 @@ try {
 
   await check('Phone 390×844: responsive layout, tap selection and touch UI', async () => {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    assert.equal(await page.locator('#walk-button').isVisible(), false, 'walk mode needs a keyboard');
     await page.locator('[data-part="roof"]').tap();
     assert.equal((await snapshot()).selected, 'roof');
     await page.locator('#clear-selection').tap();

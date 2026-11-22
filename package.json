@@ -10,6 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test:e2e": "node scripts/test-browser.mjs",
+    "sim:walk": "node scripts/walk-sim.mjs",
     "capture": "node scripts/capture.mjs",
     "fetch-refs": "python3 scripts/fetch-references.py",
     "package": "python3 scripts/package-source.py",

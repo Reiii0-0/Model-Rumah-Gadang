@@ -31,12 +31,12 @@ Tempelkan tautan video kelompok pada kolom di bawah ini sebelum pengumpulan:
 
 ```text
 .
-├── .github/workflows/ci.yml      # Pipeline GitHub Actions (typecheck, build, Playwright E2E)
+├── .github/workflows/ci.yml      # Pipeline GitHub Actions (typecheck, simulasi walk, build, Playwright E2E)
 ├── docs/
 │   └── presentasi.md             # Draf salindia presentasi & slot tautan video kelompok
 ├── evidence/
 │   ├── final/                    # Tangkapan layar verifikasi lintas sudut & ukuran layar
-│   └── test-results.json         # Laporan hasil uji terotomasi Playwright (20/20 pass)
+│   └── test-results.json         # Laporan hasil uji terotomasi Playwright (23/23 pass)
 ├── public/
 │   └── favicon.svg               # Ikon tab situs bernuansa Marawa
 ├── references/
@@ -49,14 +49,27 @@ Tempelkan tautan video kelompok pada kolom di bawah ini sebelum pengumpulan:
 │   ├── fetch-references.py       # Pengunduh ulang foto referensi & pembuat metadata SHA-256
 │   ├── package-source.py         # Pengemas ZIP sumber tanpa node_modules & artefak build
 │   ├── sync-references.mjs       # Penyinkron references/ ke public/references/ saat dev/build
-│   └── test-browser.mjs          # Suite pengujian WebGL & responsivitas Playwright
+│   ├── test-browser.mjs          # Suite pengujian WebGL & responsivitas Playwright
+│   └── walk-sim.mjs              # Simulasi headless gerak & tabrakan mode jalan (16 skenario)
 ├── src/
 │   ├── model/
 │   │   ├── house.ts              # Geometri prosedural eksterior (gonjong, badan, tonggak, ukiran)
 │   │   ├── interior.ts           # Geometri interior ruang pamer, prasasti, etalase, dan plafon
+│   │   ├── layout.ts             # Ukuran bersama (lantai, dinding, tangga, serambi, anjuang) untuk model & mode jalan
 │   │   ├── materials.ts          # Tekstur kanvas prosedural, bumpMap, dan MeshStandardMaterial
 │   │   ├── merge-static.ts       # Penggabungan geometri statis per material untuk optimasi draw calls
 │   │   └── parts.ts              # Kamus dwibahasa ID/MIN serta metadata 8 komponen arsitektur
+│   ├── walk/                     # Mode jalan orang pertama (lihat bagian "Mode jalan")
+│   │   ├── walkMode.ts           # Penghubung ke main.ts: masuk/keluar, kamera, klik, HUD
+│   │   ├── houseWorld.ts         # Collider AABB & tinggi pijakan Rumah Gadang dari layout.ts
+│   │   ├── controller.ts         # Posisi, yaw/pitch, gerak WASD, tinggi mata
+│   │   ├── collision.ts          # Silinder pemain vs AABB, sweep per sumbu (sliding)
+│   │   ├── doorColliders.ts      # Collider statis pintu tertutup / daun terbuka
+│   │   ├── input.ts              # Keyboard + tahan-seret + pembeda klik/seret
+│   │   ├── picker.ts             # Raycast kursor ke pintu atau komponen, dengan oklusi
+│   │   ├── overlay.ts            # Wireframe collider untuk debug
+│   │   └── types.ts              # Kontrak WalkWorld, Collidable, Interactable
+│   ├── doors.ts                  # Status & animasi pintu bersama (tombol, D, klik di mode jalan)
 │   ├── main.ts                   # Scene Three.js, pencahayaan, raycasting, animasi, dan UI
 │   ├── style.css                 # Sistem desain Marawa & Songket responsif
 │   └── vite-env.d.ts             # Deklarasi tipe Vite
@@ -122,6 +135,11 @@ Masuk ke direktori akar proyek, lalu jalankan perintah berikut:
    ```
    Menjalankan seluruh skenario pengujian pada *build* produksi, memperbarui tangkapan layar di `evidence/final/`, dan menulis hasil ke `evidence/test-results.json`.
 
+   Simulasi gerak mode jalan berjalan tanpa peramban dan juga dijalankan di CI:
+   ```bash
+   npm run sim:walk
+   ```
+
 5. **Kemas kode sumber ke arsip ZIP (tanpa `node_modules`):**
    ```bash
    npm run package
@@ -155,6 +173,8 @@ Masuk ke direktori akar proyek, lalu jalankan perintah berikut:
    - Tombol alih bahasa `ID / MIN` atau pintasan keyboard **`L`** menerjemahkan seluruh antarmuka, kontrol, panduan, sumber foto, serta kedelapan komponen arsitektur ke dalam **Baso Minang** asli.
    - Mendukung penuh mouse, layar sentuh satu/dua jari (*pinch* & *pan*), serta responsif dari layar lebar ($1440 \times 960$) hingga ponsel ($360 \times 740$ dan lanskap $844 \times 390$).
 
+4. **Mode jalan orang pertama ([`src/walk/`](./src/walk/)):** Pengunjung naik tangga, membuka pintu serambi, melangkahi ambang, berkeliling aula, dan naik ke *anjuang* dengan tabrakan terhadap dinding, tiang, pagar, dan perabot. Lihat bagian [Mode jalan](#mode-jalan-orang-pertama).
+
 ## Daftar kontrol pengguna
 
 | Aksi | Mouse / Layar sentuh | Tombol UI | Pintasan papan ketik |
@@ -171,6 +191,51 @@ Masuk ke direktori akar proyek, lalu jalankan perintah berikut:
 | Mulai / hentikan tur kamera | Sentuh kanvas untuk berhenti | `Tur kamera` / `Hentikan tur` | `T` |
 | Atur kecerahan (*exposure*) | Geser *slider* `Eksposur` | `0.50` – `1.80` | Panah kiri/kanan saat fokus |
 | Buka panduan & sumber foto | - | `Panduan` dan `Sumber Foto` | `Esc` (tutup dialog) |
+| Masuk / keluar mode jalan | - | `Jalan` / `Selesai jalan`, atau tombol sudut pandang | `J` masuk, `Esc` atau `J` keluar |
+
+Di dalam mode jalan:
+
+| Aksi | Kontrol |
+|---|---|
+| Jalan / lari | `W` `A` `S` `D`, tahan `Shift` untuk lari |
+| Melihat sekeliling | Tahan tombol kiri lalu seret (gaya "tarik dunia": seret ke kiri, pandangan berputar ke kanan) |
+| Buka / tutup pintu serambi | Klik daun pintu dari jarak ≤ 2,5 m, atau tombol `Buka pintu` |
+| Pilih komponen | Klik bagian rumah (kartu detail tetap tampil) |
+| Wireframe collider & info debug | `` ` `` (di bawah `Esc`) |
+| Tetap aktif | `L` (bahasa) dan `N` (siang/malam); pintasan huruf lain dimatikan agar tidak bentrok dengan `WASD` |
+
+## Mode jalan (orang pertama)
+
+Mode jalan dimulai di jalan setapak menghadap tangga. Bila dibuka dari sudut pandang `Dalam`, pengunjung mulai di titik kamera ruang dalam dengan arah pandang yang sama. Tombol `Jalan` disembunyikan pada perangkat sentuh (`pointer: coarse`), karena gerak memerlukan papan ketik.
+
+### Susunan modul
+
+- `walk/walkMode.ts` adalah satu-satunya penghubung ke `main.ts` (`enter`, `exit`, `update`, `isIndoors`). Selama aktif, `OrbitControls` dimatikan dan `controls.update()` tidak dipanggil, karena fungsi itu tetap menggerakkan kamera walau kontrol nonaktif.
+- `walk/controller.ts` dan `walk/collision.ts` hanya mengenal kontrak `WalkWorld` di `walk/types.ts`, sehingga logika gerak bisa diuji tanpa peramban.
+- `walk/houseWorld.ts` menyusun dunia jalan dari `model/layout.ts`, berkas ukuran yang sama dengan yang dipakai `house.ts` dan `interior.ts` untuk menggambar. Kotak perabot (prasasti, meja tamu, meja baca, enam etalase) diukur di `buildInterior()` sebelum geometri digabung per material.
+- `doors.ts` menyimpan status pintu yang dipakai bersama tombol toolbar, pintasan `D` di mode orbit, dan klik di mode jalan.
+
+### Keputusan desain
+
+- **Tanpa *pointer lock*.** Kursor tetap terlihat agar komponen dan pintu bisa diklik. Klik dan seret dibedakan dengan ambang 4 piksel.
+- **Tanpa *physics engine* dan tanpa gravitasi.** Pemain adalah silinder (jari-jari 0,3 m, tinggi 1,8 m) melawan kotak sejajar sumbu (AABB). Gerak diproses per sumbu agar pemain menyusur dinding. Tinggi mata (1,6 m) mengejar `getGroundHeight(x, z)` dengan peluruhan eksponensial, sehingga hasilnya sama di 30 maupun 144 FPS.
+- **Langkah waktu dibatasi 50 ms** di mode jalan (orbit tetap 0,5 s), sehingga lari 5,4 m/s paling jauh 0,27 m per frame dan tidak bisa menembus dinding. Akibatnya, pada perangkat yang sangat lambat gerak ikut melambat.
+- **Tangga = bidang miring halus** yang melewati tengah tiap anak tangga. Anak tangga hanya visual; galat kaki terhadap anak tangga paling besar ±0,1 m.
+- **Ambang pintu dilangkahi.** Pita *sill* setinggi 0,42 m di depan pintu menjadi tinggi pijakan 2,49 m, sehingga pandangan naik sedikit lalu turun.
+- **Panggung padat dari tanah.** Satu AABB menutup kolong; dari lantai atas puncaknya sama dengan kaki pemain sehingga diabaikan.
+- **Naik ke *anjuang* hanya lewat celah pagar** di tengah, melalui undakan perantara (2,07 → 2,30 → 2,58 m).
+- **Pintu = kotak statis.** Satu kotak menutup lubang pintu saat tertutup, dua kotak menempati posisi daun saat terbuka penuh. Menutup pintu ditolak bila pengunjung berdiri di ambang.
+- **Pagar tak terlihat** di sisi serambi yang terbuka, agar pengunjung tidak jatuh 2 m.
+
+### Keterbatasan
+
+1. Collider berupa AABB. Prasasti yang diputar memakai kotak yang sedikit lebih besar, dan pegangan tangga yang miring didekati satu kotak tegak setinggi maksimum.
+2. Daun pintu yang sedang berayun tidak punya collider, dan pintu tidak mendorong pemain.
+3. `getGroundHeight` mengasumsikan satu permukaan per titik $(x, z)$; kolong tidak bisa dimasuki dan tidak ada lompat atau jatuh.
+4. Tiang depan `column-0-3.65` berdiri tepat di balik pintu masuk. Pengunjung masuk lewat celah sekitar 0,8 m di kiri atau kanannya; geometri model tidak diubah.
+5. Celah antara meja tamu dan etalase tengah (0,42 m) lebih sempit dari badan pemain, sehingga tidak bisa dilewati.
+6. Semua collider (±70 kotak) diperiksa linear tiap frame. Cukup untuk ukuran ini; model yang jauh lebih rinci memerlukan grid spasial atau BVH.
+7. Tanpa *pointer lock*, satu seretan dibatasi lebar layar. Mode jalan tidak tersedia di layar sentuh.
 
 ## Sumber foto referensi
 
@@ -198,6 +263,6 @@ Seluruh foto referensi disimpan di [`references/photos/`](./references/photos/) 
 2. Isi daftar nama lengkap dan NRP anggota kelompok di [`docs/presentasi.md`](./docs/presentasi.md).
 
 ### Minggu 16 (demonstrasi akhir dan pengumpulan final)
-1. Rekam video presentasi dan demo interaktif aplikasi (orbit $360^\circ$, zoom, pan, pemilihan 8 komponen, alih bahasa `ID / MIN`, tampilan interior & *cutaway*, animasi pintu, mode siang/malam, *exposure*, dan tur kamera).
+1. Rekam video presentasi dan demo interaktif aplikasi (orbit $360^\circ$, zoom, pan, pemilihan 8 komponen, alih bahasa `ID / MIN`, tampilan interior & *cutaway*, animasi pintu, mode siang/malam, *exposure*, tur kamera, dan mode jalan).
 2. Tempelkan tautan video pada `README.md` ini dan [`docs/presentasi.md`](./docs/presentasi.md).
 3. Jalankan `npm run package` untuk menghasilkan arsip ZIP terbaru sebelum pengumpulan final.
